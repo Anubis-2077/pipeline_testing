@@ -1,0 +1,17 @@
+pipeline{
+    agent any
+
+    stages {
+        stage("checkout"){
+            steps{
+                checkout scm
+            }
+        }
+
+        stage("Run django test in docker"){
+            steps{
+                sh "docker-compose run web python manage.py test"
+            }
+        }
+    }
+}
