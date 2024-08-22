@@ -10,7 +10,7 @@ pipeline{
 
         stage("Run django test in docker"){
             steps{
-                sh "docker-compose run web python manage.py test"
+                sh "docker exec -T django-practicas-django-1 python manage.py test"
             }
         }
     }
