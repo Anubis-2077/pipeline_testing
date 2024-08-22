@@ -1,0 +1,90 @@
+# Define la versión de Docker Compose a utilizar. La versión 3.8 es compatible con las características modernas de Docker Compose.
+version: '3.8'  
+
+# Aquí se definen los servicios (contenedores) que se ejecutarán.
+services:  
+
+  db:  # Servicio de la base de datos PostgreSQL.
+    image: postgres:13  # Especifica la imagen de Docker a usar. En este caso, es PostgreSQL versión 13.
+    environment:  # Variables de entorno para configurar PostgreSQL.
+      POSTGRES_DB: ${POSTGRES_DB} 
+      POSTGRES_USER: ${POSTGRES_USER}  
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    # Volumen para la persistencia de datos.
+    volumes: 
+         # Asocia el volumen 'postgres_data' con el directorio de datos de PostgreSQL en el contenedor. 
+      - postgres_data:/var/lib/postgresql/data 
+    # Asocia el servicio con la red 'backend' para que pueda comunicarse con otros servicios en esta red.
+    networks:
+      - backend  
+
+  # Servicio de Redis, utilizado para caché o cola de tareas.
+  redis:  
+    # Especifica la imagen de Redis, una versión ligera basada en Alpine Linux.
+    image: redis:alpine  
+    networks:
+      # Asocia el servicio con la red 'backend'.
+      - backend  
+
+  # Servicio principal que ejecuta la aplicación Django.
+  django:  
+
+    # Especifica la configuración de construcción de la imagen Docker para Django.
+    build:  
+
+      # El contexto de construcción es el directorio actual.
+      context: .
+
+      # Especifica el Dockerfile que se utilizará para construir la imagen.  
+      dockerfile: django.dockerfile  
+
+    # Comando para iniciar el servidor Gunicorn, que servirá la aplicación Django.
+    command: gunicorn cicd.wsgi:application --bind 0.0.0.0:8000  
+
+    volumes:
+      # Monta el directorio de trabajo actual (.) en el contenedor en /app, permitiendo compartir archivos entre el host y el contenedor.
+      - .:/app
+      - ./cicd:/app
+
+    # Mapea el puerto 8000 del contenedor al puerto 8000 del host, permitiendo el acceso a Django desde el navegador.
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      - db  
+      - redis  
+    networks:
+      - backend  # Asocia el servicio con la red 'backend'.
+
+  # Servicio para Jenkins, utilizado para CI/CD.
+  jenkins:  
+    image: jenkins/jenkins:lts  # Especifica la imagen de Jenkins con soporte a largo plazo (LTS).
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+    ports:
+      # Mapea el puerto 8080 del contenedor al puerto 8080 del host para acceder a la interfaz web de Jenkins.
+      - "8080:8080"  
+      # Mapea el puerto 50000 para agentes Jenkins remotos.
+      - "50000:50000"  
+
+    volumes:
+      # Volumen para persistir los datos de Jenkins, incluyendo configuraciones y trabajos.
+      - jenkins_home:/var/jenkins_home  
+      # Monta el socket Docker del host en el contenedor para permitir que Jenkins controle Docker.
+      - /var/run/docker.sock:/var/run/docker.sock  
+
+    # Asocia el servicio con la red 'backend'.
+    networks:
+      - backend  
+
+# Definición de volúmenes para la persistencia de datos.
+volumes:  
+  postgres_data:  # Volumen para almacenar los datos de la base de datos PostgreSQL.
+  jenkins_home:  # Volumen para almacenar los datos y configuraciones de Jenkins.
+  
+
+networks:  # Definición de redes para la comunicación entre servicios.
+  backend:  # Red llamada 'backend', utilizada para que los servicios se comuniquen entre sí.

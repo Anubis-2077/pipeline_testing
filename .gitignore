@@ -1,0 +1,30 @@
+
+#django
+.env
+local.py
+db.sqlite3
+cache/
+tmp/
+sessions/
+media/
+static/
+/venv
+
+# Python
+__pycache__/
+*.pyc
+*.swp
+
+# Migrations
+migrations/
+!migrations/__init__.py
+
+# Testing
+.pytest_cache
+coverage/
+
+# IDEs and editors
+.idea/
+.vscode/
+.vimrc
+
